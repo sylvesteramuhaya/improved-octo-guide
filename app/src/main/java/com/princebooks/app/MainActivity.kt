@@ -58,11 +58,35 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PDFBoxResourceLoader.init(applicationContext)
-        restore()
-        drawShell()
-        show(0)
-        speech = TextToSpeech(this, this)
+        // Keep app startup independent of document parsers and speech engines.
+        try {
+            drawShell()
+            restore()
+            show(0)
+        } catch (failure: Throwable) {
+            android.util.Log.e("PrinceBooks", "Unable to open main screen", failure)
+            showStartupError(failure)
+        }
+        try {
+            speech = TextToSpeech(this, this)
+        } catch (failure: Exception) {
+            android.util.Log.w("PrinceBooks", "Speech engine unavailable", failure)
+            ready = false
+        }
+    }
+
+    private fun showStartupError(failure: Throwable) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(d(24), d(36), d(24), d(24))
+            setBackgroundColor(paper)
+        }
+        layout.addView(text("PRINCE BOOKS", 25f, navy, true))
+        layout.addView(text("The reader could not finish opening.", 18f, navy, true))
+        layout.addView(text("Diagnostic: " + failure.javaClass.simpleName + ": " +
+            (failure.message ?: "No extra details available"), 12f, muted))
+        action(layout, "Try again", { recreate() })
+        setContentView(layout)
     }
     private fun d(n: Int): Int = (n * resources.displayMetrics.density).toInt()
     private fun bg(color: Int, radius: Int = 14) = GradientDrawable().apply {
@@ -364,7 +388,10 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 val extension = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
                 val extracted = when (extension) {
                     "txt" -> dataBytes.toString(Charsets.UTF_8)
-                    "pdf" -> PDDocument.load(dataBytes).use { PDFTextStripper().getText(it) }
+                    "pdf" -> {
+                        PDFBoxResourceLoader.init(applicationContext)
+                        PDDocument.load(dataBytes).use { PDFTextStripper().getText(it) }
+                    }
                     "epub" -> readEpub(dataBytes)
                     else -> error("Only PDF, EPUB and TXT files are supported.")
                 }.trim()
