@@ -249,14 +249,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
             action(this, "Select another book", { stop(); show(1) }, false)
         }
-        box(body).apply {
-            addView(text("TEXT + VOICE", 11f, muted, true))
-            pageText = text("", 19f).apply {
-                setPadding(0, d(13), 0, d(10))
-                setTextIsSelectable(true)
-                addView(this)
-            }
+        val textBox = box(body)
+        textBox.addView(text("TEXT + VOICE", 11f, muted, true))
+        val display = text("", 19f).apply {
+            setPadding(0, d(13), 0, d(10))
+            setTextIsSelectable(true)
         }
+        pageText = display
+        textBox.addView(display)
         updateText()
     }
     private fun skip(direction: Int) {
